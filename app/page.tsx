@@ -1,6 +1,16 @@
+import { ensureProfile, getCurrentUser, hasDisplayName } from "@/lib/supabase/profile";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  const user = await getCurrentUser();
+
+  if (user) {
+    const profile = await ensureProfile(user.id);
+    if (!hasDisplayName(profile)) redirect("/setup-profile");
+    redirect("/today");
+  }
+
   const features = ["Tick your daily goals", "Track your progress", "Build unstoppable discipline"];
   return <div className="flex min-h-[82vh] flex-col justify-between py-6">
     <div className="space-y-6 text-center"><p className="text-6xl">✅</p><h1 className="text-4xl font-bold">No Zero Days</h1><p className="text-slate-300">Small daily wins. Big long-term results.</p>

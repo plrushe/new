@@ -1,32 +1,21 @@
 "use client";
-
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const items = [
-  { href: "/dashboard", label: "Today" },
-  { href: "/calendar", label: "Calendar" },
-  { href: "/stats", label: "Stats" }
+  { href: "/today", label: "Today", icon: "🏁" },
+  { href: "/calendar", label: "Calendar", icon: "📅" },
+  { href: "/stats", label: "Stats", icon: "📈" }
 ];
 
 export default function BottomNav() {
   const pathname = usePathname();
-  return (
-    <nav className="fixed bottom-0 left-0 right-0 border-t border-slate-200 bg-white p-2 md:hidden">
-      <div className="mx-auto flex max-w-md items-center justify-around">
-        {items.map((item) => {
-          const active = pathname.startsWith(item.href);
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`rounded-lg px-4 py-2 text-sm font-medium ${active ? "bg-slate-900 text-white" : "text-slate-600"}`}
-            >
-              {item.label}
-            </Link>
-          );
-        })}
-      </div>
-    </nav>
-  );
+  return <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-slate-950/95 px-3 pb-6 pt-2 backdrop-blur">
+    <div className="mx-auto flex max-w-md justify-around">
+      {items.map((i)=>{
+        const active = pathname.startsWith(i.href);
+        return <Link key={i.href} href={i.href} className={`flex min-w-20 flex-col items-center rounded-2xl px-3 py-2 text-xs ${active?"text-emerald-400":"text-slate-400"}`}><span>{i.icon}</span>{i.label}</Link>
+      })}
+    </div>
+  </nav>
 }

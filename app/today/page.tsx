@@ -1,15 +1,14 @@
+import { createClient } from "@/lib/supabase/server";
+import { requireUserWithProfileSetup } from "@/lib/supabase/profile";
 import BottomNav from "@/components/BottomNav";
 import TodayGoalsCard from "@/components/TodayGoalsCard";
 import { calculateCurrentStreak } from "@/lib/habits";
-import { createClient } from "@/lib/supabase/server";
 import { DailyEntry } from "@/types/habits";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 
 export default async function TodayPage() {
+  const { user } = await requireUserWithProfileSetup();
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
   const today = new Date().toISOString().slice(0, 10);
   const [{ data: entry }, { data: entries }] = await Promise.all([
     supabase.from("daily_entries").select("*").eq("user_id", user.id).eq("entry_date", today).maybeSingle(),

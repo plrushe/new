@@ -14,7 +14,12 @@ export async function createClient() {
         },
         setAll(cookiesToSet: { name: string; value: string; options: Record<string, unknown> }[]) {
           cookiesToSet.forEach(({ name, value, options }) => {
-            cookieStore.set(name, value, options);
+            try {
+              cookieStore.set(name, value, options);
+            } catch {
+              // `cookies().set` is only allowed in Server Actions/Route Handlers.
+              // Ignore write attempts from Server Components; middleware refresh flow handles persistence.
+            }
           });
         }
       }

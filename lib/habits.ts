@@ -1,71 +1,60 @@
-import { DailyEntry, MonthlyStats } from "@/types";
+import { CalendarDay, DailyEntry } from "@/types/habits";
 
-export function isSuccessfulDay(calorie: boolean, gym: boolean, steps: boolean): boolean {
-  return calorie && (gym || steps);
+export function calculateDaySuccess(entry: Pick<DailyEntry, "calorie_limit_met" | "gym_completed" | "steps_completed">): boolean {
+  return entry.calorie_limit_met && (entry.gym_completed || entry.steps_completed);
 }
 
-export function completedGoalCount(entry: Pick<DailyEntry, "calorie_limit_met" | "gym_completed" | "steps_completed">): number {
+export function getGoalsCompletedCount(entry: Pick<DailyEntry, "calorie_limit_met" | "gym_completed" | "steps_completed">): number {
   return Number(entry.calorie_limit_met) + Number(entry.gym_completed) + Number(entry.steps_completed);
 }
 
-export function calculateStreaks(entries: DailyEntry[]): { currentStreak: number; bestStreak: number } {
-  const successDates = new Set(entries.filter((e) => e.is_successful).map((e) => e.entry_date));
-  const sorted = [...successDates].sort();
+const toUTCDate = (iso: string) => new Date(`${iso}T00:00:00Z`);
+const toISO = (d: Date) => d.toISOString().slice(0, 10);
 
-  let bestStreak = 0;
-  let running = 0;
-  let prevDate: Date | null = null;
-
-  for (const d of sorted) {
-    const curr = new Date(`${d}T00:00:00Z`);
-    if (!prevDate) {
-      running = 1;
-    } else {
-      const diff = (curr.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24);
-      running = diff === 1 ? running + 1 : 1;
-    }
-    bestStreak = Math.max(bestStreak, running);
-    prevDate = curr;
-  }
-
-  let currentStreak = 0;
+export function calculateCurrentStreak(entries: DailyEntry[]): number {
+  const successful = new Set(entries.filter(calculateDaySuccess).map((e) => e.entry_date));
+  let streak = 0;
   const today = new Date();
   for (let i = 0; i < 3650; i += 1) {
-    const date = new Date(today);
-    date.setUTCDate(today.getUTCDate() - i);
-    const iso = date.toISOString().slice(0, 10);
-    if (successDates.has(iso)) {
-      currentStreak += 1;
-    } else {
-      break;
-    }
+    const d = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() - i));
+    if (successful.has(toISO(d))) streak += 1;
+    else break;
   }
-
-  return { currentStreak, bestStreak };
+  return streak;
 }
 
-export function calculateMonthlyStats(entries: DailyEntry[], month: Date): MonthlyStats {
-  const y = month.getUTCFullYear();
-  const m = month.getUTCMonth();
+export function calculateBestStreak(entries: DailyEntry[]): number {
+  const dates = entries.filter(calculateDaySuccess).map((e) => e.entry_date).sort();
+  let best = 0;
+  let run = 0;
+  let prev: Date | null = null;
+  for (const iso of dates) {
+    const curr = toUTCDate(iso);
+    if (!prev) run = 1;
+    else run = (curr.getTime() - prev.getTime()) / 86400000 === 1 ? run + 1 : 1;
+    best = Math.max(best, run);
+    prev = curr;
+  }
+  return best;
+}
+
+export function calculateMonthlySuccessRate(entries: DailyEntry[]): number {
+  const now = new Date();
   const monthEntries = entries.filter((e) => {
-    const d = new Date(`${e.entry_date}T00:00:00Z`);
-    return d.getUTCFullYear() === y && d.getUTCMonth() === m;
+    const d = toUTCDate(e.entry_date);
+    return d.getUTCFullYear() === now.getUTCFullYear() && d.getUTCMonth() === now.getUTCMonth();
   });
-
-  const successfulDays = monthEntries.filter((e) => e.is_successful).length;
-  const successRate = monthEntries.length ? Math.round((successfulDays / monthEntries.length) * 100) : 0;
-  const streaks = calculateStreaks(entries);
-
-  return {
-    currentStreak: streaks.currentStreak,
-    bestStreak: streaks.bestStreak,
-    successRate,
-    successfulDays
-  };
+  if (!monthEntries.length) return 0;
+  const successful = monthEntries.filter(calculateDaySuccess).length;
+  return Math.round((successful / monthEntries.length) * 100);
 }
 
-export function statusMessage(success: boolean): string {
-  return success
-    ? "Strong discipline today. Keep stacking successful days."
-    : "Reset now: nail calories and one movement goal before sleep.";
+export function getMonthCalendarDays(month: number, year: number): CalendarDay[] {
+  const first = new Date(Date.UTC(year, month, 1));
+  const mondayIndex = (first.getUTCDay() + 6) % 7;
+  const start = new Date(Date.UTC(year, month, 1 - mondayIndex));
+  return Array.from({ length: 42 }, (_, i) => {
+    const date = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate() + i));
+    return { date, iso: toISO(date), inCurrentMonth: date.getUTCMonth() === month };
+  });
 }

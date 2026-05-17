@@ -1,54 +1,31 @@
 "use client";
 
-import { DailyEntry } from "@/types";
+import DayDetailsCard from "@/components/DayDetailsCard";
+import { calculateDaySuccess, getMonthCalendarDays } from "@/lib/habits";
+import { DailyEntry } from "@/types/habits";
 import { useMemo, useState } from "react";
 
-function color(entry?: DailyEntry) {
-  if (!entry) return "bg-slate-200";
-  return entry.is_successful ? "bg-green-500" : "bg-red-500";
-}
-
 export default function CalendarMonth({ entries }: { entries: DailyEntry[] }) {
-  const [selected, setSelected] = useState<DailyEntry | null>(null);
+  const now = new Date();
+  const [month, setMonth] = useState(now.getUTCMonth());
+  const [year, setYear] = useState(now.getUTCFullYear());
+  const [selectedISO, setSelectedISO] = useState(now.toISOString().slice(0, 10));
   const map = useMemo(() => new Map(entries.map((e) => [e.entry_date, e])), [entries]);
+  const days = getMonthCalendarDays(month, year);
+  const selectedEntry = map.get(selectedISO) ?? null;
+  const selectedDate = new Date(`${selectedISO}T00:00:00Z`).toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
 
-  const today = new Date();
-  const year = today.getUTCFullYear();
-  const month = today.getUTCMonth();
-  const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+  const nav = (dir: number) => {
+    const d = new Date(Date.UTC(year, month + dir, 1));
+    setMonth(d.getUTCMonth()); setYear(d.getUTCFullYear());
+  };
 
-  const days = Array.from({ length: daysInMonth }, (_, idx) => {
-    const date = new Date(Date.UTC(year, month, idx + 1)).toISOString().slice(0, 10);
-    return { date, entry: map.get(date) };
-  });
-
-  return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-7 gap-2">
-        {days.map((d) => (
-          <button
-            key={d.date}
-            className={`aspect-square rounded-lg text-xs text-white ${color(d.entry)}`}
-            onClick={() => setSelected(d.entry ?? null)}
-          >
-            {Number(d.date.slice(-2))}
-          </button>
-        ))}
-      </div>
-
-      <div className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
-        {selected ? (
-          <div className="space-y-1 text-sm">
-            <p className="font-semibold">{selected.entry_date}</p>
-            <p>Calories: {selected.calorie_limit_met ? "Yes" : "No"}</p>
-            <p>Gym: {selected.gym_completed ? "Yes" : "No"}</p>
-            <p>Steps: {selected.steps_completed ? "Yes" : "No"}</p>
-            <p>Status: {selected.is_successful ? "Successful" : "Failed"}</p>
-          </div>
-        ) : (
-          <p className="text-sm text-slate-500">Tap a day to view details.</p>
-        )}
-      </div>
+  return <div className="space-y-4">
+    <div className="card p-4"><div className="mb-3 flex items-center justify-between"><button onClick={()=>nav(-1)}>←</button><h2 className="font-semibold">{new Date(Date.UTC(year, month,1)).toLocaleDateString(undefined,{month:"long",year:"numeric",timeZone:"UTC"})}</h2><button onClick={()=>nav(1)}>→</button></div>
+      <div className="mb-2 grid grid-cols-7 text-center text-xs text-slate-400">{["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map(d=><p key={d}>{d}</p>)}</div>
+      <div className="grid grid-cols-7 gap-2">{days.map((d)=>{const e = map.get(d.iso); const success = e && calculateDaySuccess(e); return <button key={d.iso} onClick={()=>setSelectedISO(d.iso)} className={`aspect-square rounded-full text-xs ${!d.inCurrentMonth?"opacity-30":""} ${e?(success?"bg-emerald-500 text-black":"bg-rose-500"):"bg-slate-800 text-slate-300"} ${selectedISO===d.iso?"ring-2 ring-white":""}`}>{d.date.getUTCDate()}</button>})}</div>
+      <div className="mt-4 flex gap-4 text-xs text-slate-300"><span>🟢 Successful</span><span>🔴 Failed</span><span>⚫ No entry</span></div>
     </div>
-  );
+    <DayDetailsCard entry={selectedEntry} dateLabel={selectedDate} />
+  </div>;
 }

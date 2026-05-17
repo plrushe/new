@@ -45,3 +45,40 @@ create policy "Users can delete their own entries" on public.daily_entries for d
 
 drop trigger if exists trg_daily_entries_updated_at on public.daily_entries;
 create trigger trg_daily_entries_updated_at before update on public.daily_entries for each row execute function public.set_updated_at();
+
+create or replace function public.get_site_leaderboard()
+returns table (
+  user_id uuid,
+  display_name text,
+  completed_days integer,
+  rank integer,
+  created_at timestamptz
+)
+language sql
+security definer
+set search_path = public
+as $$
+  with completed as (
+    select
+      p.user_id,
+      coalesce(nullif(trim(p.display_name), ''), 'Anonymous') as display_name,
+      p.created_at,
+      count(d.id) filter (
+        where d.calorie_limit_met = true
+        and (d.gym_completed = true or d.steps_completed = true)
+      )::integer as completed_days
+    from public.profiles p
+    left join public.daily_entries d on d.user_id = p.user_id
+    group by p.user_id, p.display_name, p.created_at
+  )
+  select
+    user_id,
+    display_name,
+    completed_days,
+    row_number() over (order by completed_days desc, created_at asc)::integer as rank,
+    created_at
+  from completed
+  order by completed_days desc, created_at asc;
+$$;
+
+grant execute on function public.get_site_leaderboard() to authenticated;

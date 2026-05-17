@@ -8,6 +8,10 @@ export function calculateDaySuccess(entry: Pick<DailyEntry, "calorie_limit_met" 
   return isSuccessfulDay(entry);
 }
 
+export function getGoalsCompletedCount(entry: Pick<DailyEntry, "calorie_limit_met" | "gym_completed" | "steps_completed">): number {
+  return Number(entry.calorie_limit_met) + Number(entry.gym_completed) + Number(entry.steps_completed);
+}
+
 export function calculateDailyPoints(entry: Pick<DailyEntry, "calorie_limit_met" | "gym_completed" | "steps_completed"> | null | undefined): number {
   if (!entry) return 0;
   return (entry.calorie_limit_met ? 2 : 0) + (entry.gym_completed ? 1 : 0) + (entry.steps_completed ? 1 : 0);

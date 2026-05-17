@@ -1,7 +1,9 @@
 import { CalendarDay, DailyEntry } from "@/types/habits";
 
+import { isSuccessfulDay } from "@/lib/leaderboard";
+
 export function calculateDaySuccess(entry: Pick<DailyEntry, "calorie_limit_met" | "gym_completed" | "steps_completed">): boolean {
-  return entry.calorie_limit_met && (entry.gym_completed || entry.steps_completed);
+  return isSuccessfulDay(entry);
 }
 
 export function getGoalsCompletedCount(entry: Pick<DailyEntry, "calorie_limit_met" | "gym_completed" | "steps_completed">): number {
